@@ -3,6 +3,7 @@ const path = require("path");
 require('dotenv').config();
 
 const { initializeDatabase } = require('./src/database/database');
+const authRoutes = require('./src/routes/auth')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +11,8 @@ const PORT = process.env.PORT || 3000;
 //parse the incoming request data
 app.use(express.urlencoded({extended:false}));
 app.use(express.json());
+
+app.use('/api/auth', authRoutes);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
