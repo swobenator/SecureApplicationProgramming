@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 require('dotenv').config();
 
+const session = require('express-session')
 const { initializeDatabase } = require('./src/database/database');
 const authRoutes = require('./src/routes/auth')
 
@@ -11,6 +12,17 @@ const PORT = process.env.PORT || 3000;
 //parse the incoming request data
 app.use(express.urlencoded({extended:false}));
 app.use(express.json());
+
+//Configure sessions to keep track of authenticated users 
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    //the session cookie expires after one hour
+    cookie:{
+        maxAge: 60*60*1000
+    }
+}))
 
 app.use('/api/auth', authRoutes);
 

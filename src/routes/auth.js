@@ -93,4 +93,109 @@ router.post('/register', async (req,res) =>{
     }
 });
 
+router.post('/login', async(req, res) =>{
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+
+    if(!email || !password){
+        return res.status(400).json({
+            message: 'Email and password are required'
+        })
+    }
+
+    try{
+        //find the account using the email submitted
+        const user = await new Promise((resolve, reject) =>{
+            db.get(
+                `Select user_id, display_name, email, password_hash, role 
+                From users where email  = ?`,
+                [email],
+                (error, row) => {
+                    if (error){
+                        reject(error);
+                    }else{
+                        resolve(row)
+                    }
+                }
+            )
+        });
+
+        if(!user){
+            return res.status(401).json({
+                message: 'Invalid email or password.'
+            });
+        }
+        
+        //Compare the submutted password with the stored hash
+        const passwordMatches = await bcrypt.compare(
+            password,
+            user.password_hash
+        );
+
+        if(!passwordMatches){
+            return res.status(401).json({
+                message: 'Invalid email or password'
+            })
+        }
+
+        //Create a new session after authentication is successful
+        await new Promise((resolve, reject) =>{
+            req.session.regenerate((error)=>{
+                if(error) reject(error);
+                else resolve();
+            });
+        });
+
+        req.session.user = {
+            user_id: user.user_id, 
+            displayName: user.displayName,
+            email: user.email,
+            role: user.role
+        };
+
+        await new Promise((resolve, reject) =>{
+            req.session.save((error)=>{
+                if(error){
+                    reject(error)
+                }
+                else{
+                   resolve(); 
+                }
+            })
+        })
+
+        return res.json({
+            message: 'Login successful',
+            user: req.session.user
+        });
+
+    }catch(error){
+        console.error('Login error:', error.message);
+
+        return res.status(500).json({
+            message: 'Unable to log in at this time'
+        });
+    }
+});
+
+
+router.post('/logout', (req, res) =>{
+    req.session.destroy((error)=>{
+        if(error){
+            console.error('Logout error:', error.message);
+
+            return res.status(500).json({
+                message: 'Unable to log out'
+            });
+        }
+
+        res.clearCookie('connect.sid');
+
+        return res.json({
+            message: 'Logged out successfully'
+        })
+    })
+})
+
 module.exports = router
